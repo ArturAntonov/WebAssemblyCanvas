@@ -1,56 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebAssembly Demo</title>
     <style media="screen">
-      body,
-      canvas {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-      }
+        body,
+        canvas {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
     </style>
-  </head>
-  <body>
-    <canvas id="canvas"></canvas>
-    <script src="canvas.js"></script>
-    <script>
-      // Create canvas context
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+    // Create canvas context
 
-      const canvas = document.getElementById('canvas');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      const context = canvas.getContext('2d');
+    const canvas = document.getElementById('canvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const context = canvas.getContext('2d');
 
-      // Render circles on canvas
+    // Store wasm instance's exports for further using
+    let instanceExports;
 
-      const render = (dataLength, circlesStructSize) => {
-        console.log('dataLength', dataLength);
+    // Render circles on canvas
+
+    const render = (dataLength, circlesStructSize) => {
+        if (!instanceExports) {
+            console.error('>>>', 'NO EXPORTS');
+            return;
+        }
+
         // Get circle data from C - Typed Array
-        let circles = new Int32Array(buffer, _getCircles(canvas.width, canvas.height), dataLength);
+        const {memory, getCircles} = instanceExports
+        let circles = new Int32Array(memory.buffer, getCircles(canvas.width, canvas.height), dataLength);
 
         // Clear existing canvas tp re-render
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         for (let i = 0; i < circles.length; i += circlesStructSize) {
-          // Get circle data chunk
-          let circle = circles.slice(i, i + circlesStructSize);
-          // Draw circle
-          context.beginPath();
-          context.arc(circle[0], circle[1], circle[2], 0, 2 * Math.PI, false);
-          context.fillStyle = `rgba(${circle[3]}, ${circle[4]}, ${circle[5]}, 0.75)`;
-          context.fill();
+            // Get circle data chunk
+            let circle = circles.slice(i, i + circlesStructSize);
+            // Draw circle
+            context.beginPath();
+            context.arc(circle[0], circle[1], circle[2], 0, 2 * Math.PI, false);
+            context.fillStyle = `rgba(${circle[3]}, ${circle[4]}, ${circle[5]}, 0.75)`;
+            context.fill();
         }
 
         console.log('rendered');
 
         // Request next animation frame and re-render with updated circles
         window.requestAnimationFrame(() => {
-          render(dataLength, circlesStructSize);
+            render(dataLength, circlesStructSize);
         });
-      };
-    </script>
-  </body>
+    };
+
+    // Initialize wasm
+    const importObject = {env: {_Z6renderii: render}}
+    WebAssembly.instantiateStreaming(fetch('canvas_cpp.wasm'), importObject)
+        .then(result => {
+            instanceExports = result.instance.exports;
+            result.instance.exports.main();
+        })
+        .catch(console.error)
+</script>
+</body>
 </html>

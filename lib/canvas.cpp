@@ -1,7 +1,4 @@
-#include <time.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <emscripten.h>
 
 // Number of circles
 #define NUM_CIRCLES 100
@@ -28,11 +25,18 @@ struct CircleAnimationData {
 };
 
 // Circles variable
-struct Circle circles[NUM_CIRCLES];
-struct CircleAnimationData animationData[NUM_CIRCLES];
+Circle circles[NUM_CIRCLES];
+CircleAnimationData animationData[NUM_CIRCLES];
+
+// Definition on exported functions
+extern "C" {
+ Circle* getCircles(int canvasWidth, int canvasHeight);
+}
+// render function from JS
+extern void render(int dataLength, int circlesStructSize);
 
 // Random number generator
-int getRand(max) {
+int getRand(int max) {
   return (rand() % max);
 }
 
@@ -41,12 +45,12 @@ int getRand(max) {
 int main() {
 
   // Seed random number generator
-  srand(time(NULL));
+  srand(42);
 
   // Create circles
   for(int i = 0; i < NUM_CIRCLES; i++) {
     // Radius
-    int radius = getRand(50);
+    int radius = getRand(20);
 
     // Coordinates
     int x = getRand(1000) + radius;
@@ -70,12 +74,12 @@ int main() {
     circles[i].cb = getRand(255);
 
   }
-  EM_ASM({ render($0, $1); }, NUM_CIRCLES*6, 6);
+
+    render(NUM_CIRCLES*6, 6);
 }
 
 // Return animated circles to JS
-
-struct Circle * getCircles(int canvasWidth, int canvasHeight) {
+Circle* getCircles(int canvasWidth, int canvasHeight) {
   // Update circle data
   for(int i =0; i < NUM_CIRCLES; i++) {
     // Collision RIGHT - set x direction backwards 0
